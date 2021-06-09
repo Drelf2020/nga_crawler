@@ -3,6 +3,7 @@ import os
 import time
 import json
 import requests
+import js2md
 from tqdm import tqdm
 from lxml import etree
 
@@ -24,7 +25,7 @@ class nga(object):
                 'Cookie': 'taihe_bi_sdk_uid=9f6b3350fa4f95f39ae629d7d6d2433d; taihe=a1747dcebbecee5a50f8dfa53cd7005c; UM_distinctid=177b9ce533354b-0a9bab952bd6fb-73e356b-144000-177b9ce5334617; CNZZDATA30043604=cnzz_eid=1103191160-1594714273-https%3A%2F%2Fbbs.nga.cn%2F&ntime=1623134901; ngacn0comUserInfo=Drelf	Drelf	39	39		10	200	4	0	0	61_2; ngacn0comUserInfoCheck=731861771366f61e88f3af515823dbec; ngacn0comInfoCheckTime=1623137434; ngaPassportUid=61710301; ngaPassportUrlencodedUname=Drelf; ngaPassportCid=X95hemmhg11gme0ll3gusboc7ilo2r3p6fbcu0am; lastvisit=1623137722; lastpath=/thread.php?fid=734&ff=-34587507; bbsmisccookies={"uisetting":{0:0,1:1624459883},"pv_count_for_insad":{0:-157,1:1623171704},"insad_views":{0:2,1:1623171704}}; _cnzz_CV30043604=forum|fid-34587507|0'
             }
 
-    def get_reply(self, tid: str, folder: str) -> int:
+    def get_reply(self, tid: str, folder: str = '') -> int:
         """
         :param tid: 帖子的id，可在网址中找到\n
         :param folder: 保存文件夹名\n
@@ -34,8 +35,6 @@ class nga(object):
             # 先跑一遍网页 用于获取总页数和主楼
             r = requests.get(f'https://bbs.nga.cn/read.php?tid={tid}', headers=self.headers)
             # 网页可爬 新建文件夹用于存放帖子
-            if not os.path.exists(folder):
-                os.makedirs(folder)
         except Exception:
             return 101
         try:
@@ -45,6 +44,10 @@ class nga(object):
             total = 1
         # 从谷歌浏览器Copy的主楼的xpath
         main = etree.HTML(r.text).xpath('//*[@id="postcontent0"]/text()')
+        if not folder:
+            folder = etree.HTML(r.text).xpath('//*[@id="postsubject0"]/text()')[0]
+        if not os.path.exists(folder):
+            os.makedirs(folder)
         for i in tqdm(range(1, total+1)):
             # 遍历帖子
             s = []
@@ -63,6 +66,7 @@ class nga(object):
                 # 导出
                 with open(f'{folder}\\{i}.json', 'w', encoding='utf-8') as f:
                     f.write(json.dumps(s, ensure_ascii=False, indent=4))
+                js2md.write(folder+'\\'+folder, s)
             else:
                 return 103
             time.sleep(0.25)  # 休眠 防止爬虫进入过载模式
@@ -104,9 +108,12 @@ class nga(object):
 
 
 if __name__ == '__main__':
-    url = nga().get_post('-34587507', [1])
+    print(nga().get_reply('25608284'))
+    '''
+    url = nga().get_post('733', [1])
     for u in tqdm(url):
         if not u['tid'] in ['22984478', '17190139', '27065807']:
-            print(f'\n{u["title"]}({u["tid"]}):', end='')
+            print(f'\n{u["title"]}({u["tid"]}):')
             nga().get_reply(u['tid'], u['title'])
         print('\n已完成备份:')
+    '''
